@@ -15,11 +15,6 @@
                                                                  (+ x tile-width) y (* 0.5 (+ px 1)) (* 0.5 py)))))))
 
 
-
-
-(addTile 250.0 250.0 0.0 1.0)
-
-
 (define vertex-shader #<<end-of-shader
 
 #version 120
@@ -183,7 +178,9 @@ end-of-shader
 
                    ;; -- Game logic --
                    (pp vertex-data-vector)
+                   (set! vertex-data-vector '#f32())
                    (addTile 300.0 300.0 1.0 1.0)
+                   (addTile 200.0 200.0 1.0 0.0)
                    ;; (let ((GLfloat*-increment
                    ;;        (lambda (n x) (GLfloat*-set! vertex-data n (+ (GLfloat*-ref vertex-data n) x)))))
                    ;;   (GLfloat*-increment 0 1.0)
