@@ -6,19 +6,19 @@
 (define tile-width 50.0)
 (define vertex-data-vector '#f32())
 
-(define addTile (lambda (x y)
+(define addTile (lambda (x y px py)
                   (set! vertex-data-vector 
                         (f32vector-append vertex-data-vector 
-                                          (list->f32vector (list x y 0.0 0.0
-                                                                 x (+ y tile-heigth) 0.0 1.0
-                                                                 (+ x tile-width) (+ y tile-heigth) 1.0 1.0
-                                                                 (+ x tile-width) y 1.0 0.0))))))
+                                          (list->f32vector (list x y (* 0.5 px) (* 0.5 py)
+                                                                 x (+ y tile-heigth) (* 0.5 px) (* 0.5 (+ py 1))
+                                                                 (+ x tile-width) (+ y tile-heigth) (* 0.5 (+ px 1)) (* 0.5 (+ py 1))
+                                                                 (+ x tile-width) y (* 0.5 (+ px 1)) (* 0.5 py)))))))
 
 
 
 
-(addTile 250.0 250.0)
-(addTile 500.0 50.0)
+(addTile 250.0 250.0 0.0 1.0)
+
 
 (define vertex-shader #<<end-of-shader
 
@@ -183,21 +183,21 @@ end-of-shader
 
                    ;; -- Game logic --
                    (pp vertex-data-vector)
-                   (let ((GLfloat*-increment
-                          (lambda (n x) (GLfloat*-set! vertex-data n (+ (GLfloat*-ref vertex-data n) x)))))
-                     (GLfloat*-increment 0 1.0)
-                     (GLfloat*-increment 1 1.0)
-                     (GLfloat*-increment 4 1.0)
-                     (GLfloat*-increment 5 1.0)
-                     (GLfloat*-increment 8 1.0)
-                     (GLfloat*-increment 9 1.0)
-                     (GLfloat*-increment 12 1.0)
-                     (GLfloat*-increment 13 1.0))
+                   (addTile 300.0 300.0 1.0 1.0)
+                   ;; (let ((GLfloat*-increment
+                   ;;        (lambda (n x) (GLfloat*-set! vertex-data n (+ (GLfloat*-ref vertex-data n) x)))))
+                   ;;   (GLfloat*-increment 0 1.0)
+                   ;;   (GLfloat*-increment 1 1.0)
+                   ;;   (GLfloat*-increment 4 1.0)
+                   ;;   (GLfloat*-increment 5 1.0)
+                   ;;   (GLfloat*-increment 8 1.0)
+                   ;;   (GLfloat*-increment 9 1.0)
+                   ;;   (GLfloat*-increment 12 1.0)
+                   ;;   (GLfloat*-increment 13 1.0))
                    
                    ;; -- Draw -
                    (glClearColor 1.0 0.2 0.0 0.0)
                    (glClear GL_COLOR_BUFFER_BIT)
-                  
                    (glActiveTexture (+ GL_TEXTURE0 texture-unit))
                    (glBindTexture GL_TEXTURE_2D (*->GLuint texture-id*))
                    (glBindSampler texture-unit (*->GLuint sampler-id*))
@@ -206,10 +206,10 @@ end-of-shader
                    (glBindVertexArray (*->GLuint main-vao-id*))
                    ;; Update vertex data buffer
                    (glBindBuffer GL_ARRAY_BUFFER position-buffer-object-id)
-                   (glBufferSubData GL_ARRAY_BUFFER
-                                    0
-                                    (* (f32vector-length vertex-data-vector) GLfloat-size)
-                                    vertex-data)
+                   (glBufferData GL_ARRAY_BUFFER
+                          (* (f32vector-length vertex-data-vector) GLfloat-size)
+                          (f32vector->GLfloat* vertex-data-vector)
+                          GL_DYNAMIC_DRAW)
                    
                    (glUseProgram shader-program)
                    (glDrawArrays GL_QUADS 0 (/ (f32vector-length vertex-data-vector) 4))
