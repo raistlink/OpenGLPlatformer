@@ -247,7 +247,6 @@ end-of-shader
                    
                    ;; -- Game logic --
 
-                   (pp time)
                    ;; Limpiamos el buffer.
                    (set! vertex-data-vector '#f32())
 
@@ -475,10 +474,9 @@ end-of-shader
                                   (enemy-posy-set! (world-enemy world) (- 0 tile-width))
                                   (set! enemyX '(0))
                                   (set! enemyY '(0))
-                                  (set! enemycounter 0))))) 
-                      
-                      
-                      ))
+                                  (set! enemycounter 0))))))
+                     ((death-screen)
+                      (addTile 600.0 350.0 1.0 1.0)))
 
 
 
