@@ -3,7 +3,7 @@
 
 (define screen-width 1280.0)
 (define screen-height 752.0)
-(define tile-heigth 25.0)
+(define tile-height 25.0)
 (define tile-width 25.0)
 (define vertex-data-vector '#f32())
 
@@ -22,8 +22,8 @@
                   (set! vertex-data-vector 
                         (f32vector-append vertex-data-vector 
                                           (list->f32vector (list x y (* 0.5 px) (* 0.5 py)
-                                                                 x (+ y tile-heigth) (* 0.5 px) (* 0.5 (+ py 1))
-                                                                 (+ x tile-width) (+ y tile-heigth) (* 0.5 (+ px 1)) (* 0.5 (+ py 1))
+                                                                 x (+ y tile-height) (* 0.5 px) (* 0.5 (+ py 1))
+                                                                 (+ x tile-width) (+ y tile-height) (* 0.5 (+ px 1)) (* 0.5 (+ py 1))
                                                                  (+ x tile-width) y (* 0.5 (+ px 1)) (* 0.5 py)))))))
 
 ;; Functions to get from one level to another, and spawn position data
@@ -192,7 +192,7 @@ end-of-shader
             (let ((event* (alloc-SDL_Event 1)))
               (call/cc
                (lambda (quit)
-                 (let main-loop ((world (make-world 'splashscreen '() '()))
+                 (let main-loop ((world (make-world 'splash-screen '() '()))
                                  (time (SDL_GetTicks))
                                  (jumpcounter 0) 
                                  (levelcounter 0) 
@@ -210,50 +210,283 @@ end-of-shader
                                             (SDL_KeyboardEvent-keysym kevt*))))
                                  (cond ((= key SDLK_ESCAPE)
                                         (quit))
+                                       ((= key SDLK_RETURN)
+                                        (if (eq? (world-gamestate world) 'splash-screen)
+                                            (set! world (make-world 'game-screen (make-player (* tile-width 2) (* tile-width 28) 'idle 'idle) (make-enemy (- 0 tile-width) (- 0 tile-height))))
+                                            (set! world (make-world 'splash-screen '() '()))))
+                                       ((= key SDLK_LEFT)
+                                        (if (eq? (world-gamestate world) 'game-screen)
+                                            (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) 'left (player-vstate (world-player world))) (world-enemy world)))))
+                                       ((= key SDLK_RIGHT)
+                                        (if (eq? (world-gamestate world) 'game-screen)
+                                            (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) 'right (player-vstate (world-player world))) (world-enemy world)))))
+                                       ((= key SDLK_UP)
+                                        (if (and (eq? (world-gamestate world) 'game-screen) (eq? (player-vstate (world-player world)) 'idle))
+                                            (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) (player-hstate (world-player world)) 'jump) (world-enemy world)))))
                                        (else
                                         (SDL_LogVerbose SDL_LOG_CATEGORY_APPLICATION (string-append "Key: " (number->string key)))))))
+
+                              ((= event-type SDL_KEYUP)
+                               (SDL_LogVerbose SDL_LOG_CATEGORY_APPLICATION "Key up")
+                               (let* ((kevt* (SDL_Event-key event*))
+                                      (key (SDL_Keysym-sym
+                                            (SDL_KeyboardEvent-keysym kevt*))))
+                                 (cond  ((= key SDLK_LEFT)
+                                         (if (and (eq? (world-gamestate world) 'game-screen) (eq? (player-hstate (world-player world)) 'left))
+                                             (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) 'idle (player-vstate (world-player world))) (world-enemy world)))))
+                                        ((= key SDLK_RIGHT)
+                                         (if (and (eq? (world-gamestate world) 'game-screen) (eq? (player-hstate (world-player world)) 'right))
+                                             (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) 'idle (player-vstate (world-player world))) (world-enemy world)))))
+                                        ((= key SDLK_UP)
+                                         (if (and (eq? (world-gamestate world) 'game-screen) (eq? (player-vstate (world-player world)) 'jump))
+                                             (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) (player-hstate (world-player world)) 'falling) (world-enemy world))) ))
+                                        (else
+                                         (SDL_LogVerbose SDL_LOG_CATEGORY_APPLICATION (string-append "Key: " (number->string key)))))))
                               (else #f)))
                            (event-loop)))
-
+                   
                    ;; -- Game logic --
+
+                   (pp time)
                    ;; Limpiamos el buffer.
                    (set! vertex-data-vector '#f32())
 
-                   
-                   ;; Drawing the tiles.
+                   (case (world-gamestate world)
+                     ((splash-screen)
+                      (addTile 600.0 350.0 0.0 0.0))
+                     
+                     ;;TODO when we have text
+                     
+                     ((game-screen)
+                      
+                      ;; Drawing the tiles.
+                      (let loop ((rest (getlevel levellist levelcounter)) (counterX 0) (counterY 0))
+                        (if (and (eq? counterX 50) (eq? counterY 29))
+                            (addTile (* counterX tile-width) (* counterY tile-height) 1.0 1.0)
+                            (begin
+                              (if (eq? (vector-ref (vector-ref rest counterY) counterX) 1)
+                                  (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-height)) 1.0 1.0))
+                              (if (eq? (vector-ref (vector-ref rest counterY) counterX) 4)
+                                  (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-height)) 0.0 0.0))
+                              (if (eq? counterX 50)
+                                  (loop rest (- counterX 50) (+ counterY 1))
+                                  (loop rest (+ counterX 1) counterY)))))
 
-                   (let loop ((rest (getlevel levellist levelcounter)) (counterX 0) (counterY 0))
-                     (if (and (eq? counterX 50) (eq? counterY 29))
-                         (addTile (* counterX tile-width) (* counterY tile-heigth) 1.0 1.0)
-                         (begin
-                           (if (eq? (vector-ref (vector-ref rest counterY) counterX) 0)
-                               (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-heigth)) 0.0 1.0))
-                           (if (eq? (vector-ref (vector-ref rest counterY) counterX) 1)
-                               (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-heigth)) 1.0 1.0))
-                           (if (eq? (vector-ref (vector-ref rest counterY) counterX) 4)
-                               (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-heigth)) 0.0 0.0))
-                           (if (eq? counterX 50)
-                               (loop rest (- counterX 50) (+ counterY 1))
-                               (loop rest (+ counterX 1) counterY)))))
+                      ;; Drawing the player.
+                      (addTile (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player world))) 0.0 1.0)
 
-
-
-                   
-
-
-
-
-
-
-
-
+                      ;; Drawing the enemy.
+                      (addTile (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 1.0 0.0)
 
 
 
+                      ;;Player Movement Calculation
+          
+                      ;;Going Left
+                      (if (eq? (player-hstate (world-player world)) 'left)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height)))) 
+                                                     (inexact->exact (floor (/ (- (player-posx (world-player world)) (/ tile-width 25)) tile-width)))) 1)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (+ (- tile-height (/ tile-height 16.666)) (player-posy (world-player world))) tile-height)))) 
+                                                     (inexact->exact (floor (/ (- (player-posx (world-player world)) (/ tile-width 25)) tile-width)))) 1) )
+                                (player-posx-set! (world-player world) (+ (player-posx (world-player world)) 0))
+                                (player-posx-set! (world-player world) (- (player-posx (world-player world)) (/ tile-width 10))))))
+                      
+                      ;;Going Right
+                      (if (eq? (player-hstate (world-player world)) 'right)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height)))) 
+                                                     (inexact->exact (floor  (/  (+ (+ tile-width (/ tile-width 10)) (player-posx (world-player world))) tile-width)))) 1)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (+ (- tile-height (/ tile-height 16.666)) (player-posy (world-player world))) tile-height)))) 
+                                                     (inexact->exact (floor  (/  (+ (+ tile-width (/ tile-width 10)) (player-posx (world-player world))) tile-width)))) 1))
+                                (player-posx-set! (world-player world) (- (player-posx (world-player world)) 0))
+                                (player-posx-set! (world-player world) (+ (player-posx (world-player world)) (/ tile-width 10))))))
+                      
+                      
+                      ;;Falling
+                      (if (or (eq? (player-vstate (world-player world)) 'idle) (eq? (player-vstate (world-player world)) 'falling))
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (+ (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))) 1))
+                                                     (inexact->exact (floor (/ (player-posx (world-player world)) tile-width)))) 1)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (+ (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))) 1))
+                                                     (inexact->exact (floor (/ (+ tile-width (player-posx (world-player world))) tile-width)))) 1))
+                                (begin
+                                  (player-vstate-set! (world-player world) 'idle)
+                                  (set! jumpcounter 0))
+                                (begin
+                                  (player-posy-set! (world-player world) (+ (player-posy (world-player world)) (/ tile-height 5)))
+                                  (player-vstate-set! (world-player world) 'falling)))))
+                      
+                      ;;Jumping
+                      (if (eq? (player-vstate (world-player world)) 'jump)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))))
+                                                     (inexact->exact (floor (/ ( player-posx (world-player world)) tile-width)))) 1)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))))
+                                                     (inexact->exact (floor (/ (+ tile-width (player-posx (world-player world))) tile-width)))) 1) 
+                                    )
+                                (player-vstate-set! (world-player world) 'falling)
+                                (if (> jumpcounter (* tile-width 6))
+                                    (begin
+                                      (player-vstate-set! (world-player world) 'falling)
+                                      (set! jumpcounter 0))
+                                    (begin
+                                      (player-posy-set! (world-player world) (- (player-posy (world-player world)) (/ tile-width 5)))
+                                      (set! jumpcounter (+ jumpcounter (/ tile-width 5))))))))
+                      
+                      
+                      ;;Enemy Calculations
+                      
+                      ;;Spawn counter
+                      (if (eq? enemycounter 0)
+                          (set! enemycounter time))
+                      
+                      ;;Enemy position updating
+                      (if (> (- time enemycounter) 1500)
+                          (begin
+                            (enemy-posx-set! (world-enemy world) (car enemyX))
+                            (enemy-posy-set! (world-enemy world) (car enemyY))
+                            (set! enemyX (cdr enemyX))
+                            (set! enemyY (cdr enemyY))))
+                      
+                      ;;Enemy position list updating
+                      (if (not (and (eq? (player-posx (world-player world)) (last enemyX))
+                                    (eq? (player-posy (world-player world)) (last enemyY))
+                                    ))
+                          (begin
+                            (set! enemyX (append enemyX (list (player-posx (world-player world)))))
+                            (set! enemyY (append enemyY (list (player-posy (world-player world)))))))
+                      
+                      ;;Enemy Collision detection.
+                      
+                      (if (and (< (abs (- (+ (player-posx (world-player world)) (/ tile-width 2)) (+ (enemy-posx (world-enemy world)) (/ tile-height 2)))) (/ tile-width 2))
+                               (< (abs (- (+ (player-posy (world-player world)) (/ tile-width 2)) (+ (enemy-posy (world-enemy world)) (/ tile-height 2)))) (/ tile-width 2)))
+                          (begin
+                            (world-gamestate-set! world 'death-screen)
+                            (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                            (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                            (set! enemyX '(0))
+                            (set! enemyY '(0))
+                            (set! enemycounter 0)
+                            (set! levelcounter 0)))
+                      
+                      
+                      
+                      ;;Game calculations
+                      
+                      ;; Obstacle collision calculation
+                      
+                      ;;Collision on the left
+                      (if (eq? (player-hstate (world-player world)) 'left)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height)))) 
+                                                     (inexact->exact (floor (/ (- (player-posx (world-player world)) (/ tile-width 25)) tile-width)))) 4)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (+ (- tile-height (/ tile-height 16.666)) (player-posy (world-player world))) tile-height)))) 
+                                                     (inexact->exact (floor (/ (- (player-posx (world-player world)) (/ tile-width 25)) tile-width)))) 4) )
+                                (begin
+                                  (world-gamestate-set! world 'death-screen)
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0)
+                                  (set! levelcounter 0)))))
+                      
+                      ;;Collision on the right
+                      (if (eq? (player-hstate (world-player world)) 'right)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height)))) 
+                                                     (inexact->exact (floor  (/  (+ (+ tile-width (/ tile-width 10)) (player-posx (world-player world))) tile-width)))) 4)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (+ (- tile-height (/ tile-height 16.666)) (player-posy (world-player world))) tile-height)))) 
+                                                     (inexact->exact (floor  (/  (+ (+ tile-width (/ tile-width 10)) (player-posx (world-player world))) tile-width)))) 4))
+                                (begin
+                                  (world-gamestate-set! world 'death-screen)
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0)
+                                  (set! levelcounter 0)))))
+                      
+                      
+                      ;;Collision on bottom
+                      (if (or (eq? (player-vstate (world-player world)) 'idle) (eq? (player-vstate (world-player world)) 'falling))
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (+ (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))) 1))
+                                                     (inexact->exact (floor (/ (player-posx (world-player world)) tile-width)))) 4)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (+ (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))) 1))
+                                                     (inexact->exact (floor (/ (+ tile-width (player-posx (world-player world))) tile-width)))) 4))
+                                (begin
+                                  (world-gamestate-set! world 'death-screen)
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0)
+                                  (set! levelcounter 0)))))
+                      
+                      ;;Collision on top
+                      (if (eq? (player-vstate (world-player world)) 'jump)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))))
+                                                     (inexact->exact (floor (/ ( player-posx (world-player world)) tile-width)))) 4)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))))
+                                                     (inexact->exact (floor (/ (+ tile-width (player-posx (world-player world))) tile-width)))) 4) 
+                                    )
+                                (begin
+                                  (world-gamestate-set! world 'death-screen)
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0)
+                                  (set! levelcounter 0)))))
+                      
+                      
+                      ;; Level Complete
+                      (if (eq? (player-hstate (world-player world)) 'right)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height)))) 
+                                                     (inexact->exact (floor  (/  (+ (+ tile-width (/ tile-width 10)) (player-posx (world-player world))) tile-width)))) 2)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (+ (- tile-height (/ tile-height 16.666)) (player-posy (world-player world))) tile-height)))) 
+                                                     (inexact->exact (floor  (/  (+ (+ tile-width (/ tile-width 10)) (player-posx (world-player world))) tile-width)))) 2))
+                                (begin
+                                  (set! levelcounter (+ levelcounter 1))
+                                  (player-posy-set! (world-player world) (* tile-width (getlevel level+ levelcounter)))
+                                  (player-posx-set! (world-player world) (* tile-width 2))
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0)))))
+                      
+                      ;; Level Back
+                      (if (eq? (player-hstate (world-player world)) 'left)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height)))) 
+                                                     (inexact->exact (floor (/ (- (player-posx (world-player world)) (/ tile-width 25)) tile-width)))) 3)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (+ (- tile-height (/ tile-height 16.666)) (player-posy (world-player world))) tile-height)))) 
+                                                     (inexact->exact (floor (/ (- (player-posx (world-player world)) (/ tile-width 25)) tile-width)))) 3) )
+                                (begin
+                                  (set! levelcounter (- levelcounter 1))
+                                  (player-posy-set! (world-player world) (* tile-width (getlevel level- levelcounter)))
+                                  (player-posx-set! (world-player world) (* tile-width 49))
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0))))) 
+                      
+                      
+                      ))
+
+
+
+                
 
 
                    ;; -- Draw -
-                   (glClearColor 1.0 0.2 0.0 0.0)
+                   (glClearColor 0.0 0.0 0.0 0.0)
                    (glClear GL_COLOR_BUFFER_BIT)
                    (glActiveTexture (+ GL_TEXTURE0 texture-unit))
                    (glBindTexture GL_TEXTURE_2D (*->GLuint texture-id*))
@@ -275,7 +508,7 @@ end-of-shader
                    ;; End VAO
                    
                    (SDL_GL_SwapWindow win)
-                   (main-loop world time jumpcounter levelcounter enemyX enemyY enemycounter))))
+                   (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter))))
               (free event*)
               (SDL_LogInfo SDL_LOG_CATEGORY_APPLICATION "Bye.")
               (SDL_GL_DeleteContext ctx)
