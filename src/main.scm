@@ -1,10 +1,22 @@
 ;;; Copyright (c) 2013 by Álvaro Castro Castilla
 ;;; OpenGL 2.1 2d skeleton
 
-
-(define tile-heigth 50.0)
-(define tile-width 50.0)
+(define screen-width 1280.0)
+(define screen-height 752.0)
+(define tile-heigth 25.0)
+(define tile-width 25.0)
 (define vertex-data-vector '#f32())
+
+
+;;Level information is loaded from here.
+(load "Leveldata.dat")
+
+
+
+(define-structure player posx posy hstate vstate)
+(define-structure enemy posx posy)
+(define-structure world gamestate player enemy)
+
 
 (define addTile (lambda (x y px py)
                   (set! vertex-data-vector 
@@ -13,6 +25,27 @@
                                                                  x (+ y tile-heigth) (* 0.5 px) (* 0.5 (+ py 1))
                                                                  (+ x tile-width) (+ y tile-heigth) (* 0.5 (+ px 1)) (* 0.5 (+ py 1))
                                                                  (+ x tile-width) y (* 0.5 (+ px 1)) (* 0.5 py)))))))
+
+;; Functions to get from one level to another, and spawn position data
+(define levellist (cons level1 (cons level2 (cons level3 '()))))
+(define level+ (cons 28 (cons 3 (cons 8 '()))))
+(define level- (cons 3 (cons 28 (cons 3 '()))))
+
+
+;; Funcion to get the level we are in.
+(define (getlevel llist lcounter)
+  (let loop ((rest llist) (counter 0))
+    (if (eq? counter lcounter)
+        (car rest)
+        (loop (cdr rest) (+ counter 1)))))
+
+;; Get the last element of a list.
+(define (last nlist)
+  (let loop ((rest nlist))
+    (if (null? (cdr rest))
+        (car rest)
+        (loop (cdr rest)))))
+
 
 
 (define vertex-shader #<<end-of-shader
@@ -159,7 +192,13 @@ end-of-shader
             (let ((event* (alloc-SDL_Event 1)))
               (call/cc
                (lambda (quit)
-                 (let main-loop ()
+                 (let main-loop ((world (make-world 'splashscreen '() '()))
+                                 (time (SDL_GetTicks))
+                                 (jumpcounter 0) 
+                                 (levelcounter 0) 
+                                 (enemyX '(0)) 
+                                 (enemyY '(0)) 
+                                 (enemycounter 0))
                    (let event-loop ()
                      (when (= 1 (SDL_PollEvent event*))
                            (let ((event-type (SDL_Event-type event*)))
@@ -177,21 +216,42 @@ end-of-shader
                            (event-loop)))
 
                    ;; -- Game logic --
-                   (pp vertex-data-vector)
+                   ;; Limpiamos el buffer.
                    (set! vertex-data-vector '#f32())
-                   (addTile 300.0 300.0 1.0 1.0)
-                   (addTile 200.0 200.0 1.0 0.0)
-                   ;; (let ((GLfloat*-increment
-                   ;;        (lambda (n x) (GLfloat*-set! vertex-data n (+ (GLfloat*-ref vertex-data n) x)))))
-                   ;;   (GLfloat*-increment 0 1.0)
-                   ;;   (GLfloat*-increment 1 1.0)
-                   ;;   (GLfloat*-increment 4 1.0)
-                   ;;   (GLfloat*-increment 5 1.0)
-                   ;;   (GLfloat*-increment 8 1.0)
-                   ;;   (GLfloat*-increment 9 1.0)
-                   ;;   (GLfloat*-increment 12 1.0)
-                   ;;   (GLfloat*-increment 13 1.0))
+
                    
+                   ;; Drawing the tiles.
+
+                   (let loop ((rest (getlevel levellist levelcounter)) (counterX 0) (counterY 0))
+                     (if (and (eq? counterX 50) (eq? counterY 29))
+                         (addTile (* counterX tile-width) (* counterY tile-heigth) 1.0 1.0)
+                         (begin
+                           (if (eq? (vector-ref (vector-ref rest counterY) counterX) 0)
+                               (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-heigth)) 0.0 1.0))
+                           (if (eq? (vector-ref (vector-ref rest counterY) counterX) 1)
+                               (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-heigth)) 1.0 1.0))
+                           (if (eq? (vector-ref (vector-ref rest counterY) counterX) 4)
+                               (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-heigth)) 0.0 0.0))
+                           (if (eq? counterX 50)
+                               (loop rest (- counterX 50) (+ counterY 1))
+                               (loop rest (+ counterX 1) counterY)))))
+
+
+
+                   
+
+
+
+
+
+
+
+
+
+
+
+
+
                    ;; -- Draw -
                    (glClearColor 1.0 0.2 0.0 0.0)
                    (glClear GL_COLOR_BUFFER_BIT)
@@ -215,7 +275,7 @@ end-of-shader
                    ;; End VAO
                    
                    (SDL_GL_SwapWindow win)
-                   (main-loop))))
+                   (main-loop world time jumpcounter levelcounter enemyX enemyY enemycounter))))
               (free event*)
               (SDL_LogInfo SDL_LOG_CATEGORY_APPLICATION "Bye.")
               (SDL_GL_DeleteContext ctx)
