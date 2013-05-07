@@ -476,9 +476,12 @@ end-of-shader
                                   (set! enemyY '(0))
                                   (set! enemycounter 0))))))
                      ((death-screen)
-                      (addTile 600.0 350.0 1.0 0.0)))
+                      (addTile 600.0 350.0 1.0 0.0)
+                          
+                          ;; TODO when we have text
+                      ))
 
-
+                    
 
                 
 
