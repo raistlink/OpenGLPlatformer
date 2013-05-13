@@ -21,19 +21,19 @@
 (define addTile (lambda (x y px py)
                   (set! vertex-data-vector 
                         (f32vector-append vertex-data-vector 
-                                          (list->f32vector (list x y (* 0.5 px) (* 0.5 py)
-                                                                 x (+ y tile-height) (* 0.5 px) (* 0.5 (+ py 1))
-                                                                 (+ x tile-width) (+ y tile-height) (* 0.5 (+ px 1)) (* 0.5 (+ py 1))
-                                                                 (+ x tile-width) y (* 0.5 (+ px 1)) (* 0.5 py)))))))
+                                          (list->f32vector (list x y (* 0.25 px) (* 0.25 py)
+                                                                 x (+ y tile-height) (* 0.25 px) (* 0.25 (+ py 1))
+                                                                 (+ x tile-width) (+ y tile-height) (* 0.25 (+ px 1)) (* 0.25 (+ py 1))
+                                                                 (+ x tile-width) y (* 0.25 (+ px 1)) (* 0.25 py)))))))
 
 
 (define addBackground (lambda (px py)
                   (set! vertex-data-vector 
                         (f32vector-append vertex-data-vector 
-                                          (list->f32vector (list 0.0 0.0 (* 0.5 px) (* 0.5 py)
-                                                                 0.0 (+ 0.0 screen-height) (* 0.5 px) (* 0.5 (+ py 1))
-                                                                 (+ 0.0 screen-width) (+ 0.0 screen-height) (* 0.5 (+ px 1)) (* 0.5 (+ py 1))
-                                                                 (+ 0.0 screen-width) 0.0 (* 0.5 (+ px 1)) (* 0.5 py)))))))
+                                          (list->f32vector (list 0.0 0.0 (* 0.25 px) (* 0.25 py)
+                                                                 0.0 (+ 0.0 (- screen-height 5)) (* 0.25 px) (* 0.25 (+ py 1))
+                                                                 (+ 0.0 (- screen-width 5)) (+ 0.0 (- screen-height 5)) (* 0.25 (+ px 1)) (* 0.25 (+ py 1))
+                                                                 (+ 0.0 (- screen-width 5)) 0.0 (* 0.25 (+ px 1)) (* 0.25 py)))))))
 
 ;; Functions to get from one level to another, and spawn position data
 (define levellist (cons level1 (cons level2 (cons level3 '()))))
@@ -168,8 +168,8 @@ end-of-shader
           (let ((sampler-id (*->GLuint sampler-id*)))
             (glSamplerParameteri sampler-id GL_TEXTURE_WRAP_S GL_CLAMP_TO_EDGE)
             (glSamplerParameteri sampler-id GL_TEXTURE_WRAP_T GL_CLAMP_TO_EDGE)
-            (glSamplerParameteri sampler-id GL_TEXTURE_MAG_FILTER GL_NEAREST)
-            (glSamplerParameteri sampler-id GL_TEXTURE_MIN_FILTER GL_NEAREST))
+            (glSamplerParameteri sampler-id GL_TEXTURE_MAG_FILTER GL_LINEAR)
+            (glSamplerParameteri sampler-id GL_TEXTURE_MIN_FILTER GL_LINEAR))
           
           ;; Vertex Array Object
           (glGenBuffers 1 position-buffer-object-id*)
@@ -261,11 +261,15 @@ end-of-shader
 
                    (case (world-gamestate world)
                      ((splash-screen)
-                      (addBackground 0.0 1.0))
+                      ;; Drawing the menu image
+                      
+                      (addBackground 2.0 0.0))
                      
-                     ;;TODO when we have text
-                     
+
                      ((game-screen)
+                      
+                      ;; Drawing the background
+                      (addBackground 3.0 0.0)
                       
                       ;; Drawing the tiles.
                       (let loop ((rest (getlevel levellist levelcounter)) (counterX 0) (counterY 0))
@@ -485,10 +489,12 @@ end-of-shader
                                   (set! enemyX '(0))
                                   (set! enemyY '(0))
                                   (set! enemycounter 0))))))
+
+
                      ((death-screen)
-                      (addBackground 1.0 0.0)
-                          
-                          ;; TODO when we have text
+                      
+                      ;;Drawing the death background
+                      (addBackground 2.0 1.0)
                       ))
 
                     
