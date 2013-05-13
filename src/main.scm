@@ -26,6 +26,15 @@
                                                                  (+ x tile-width) (+ y tile-height) (* 0.5 (+ px 1)) (* 0.5 (+ py 1))
                                                                  (+ x tile-width) y (* 0.5 (+ px 1)) (* 0.5 py)))))))
 
+
+(define addBackground (lambda (px py)
+                  (set! vertex-data-vector 
+                        (f32vector-append vertex-data-vector 
+                                          (list->f32vector (list 0.0 0.0 (* 0.5 px) (* 0.5 py)
+                                                                 0.0 (+ 0.0 screen-height) (* 0.5 px) (* 0.5 (+ py 1))
+                                                                 (+ 0.0 screen-width) (+ 0.0 screen-height) (* 0.5 (+ px 1)) (* 0.5 (+ py 1))
+                                                                 (+ 0.0 screen-width) 0.0 (* 0.5 (+ px 1)) (* 0.5 py)))))))
+
 ;; Functions to get from one level to another, and spawn position data
 (define levellist (cons level1 (cons level2 (cons level3 '()))))
 (define level+ (cons 28 (cons 3 (cons 8 '()))))
@@ -252,7 +261,7 @@ end-of-shader
 
                    (case (world-gamestate world)
                      ((splash-screen)
-                      (addTile 600.0 350.0 0.0 1.0))
+                      (addBackground 0.0 1.0))
                      
                      ;;TODO when we have text
                      
@@ -345,8 +354,9 @@ end-of-shader
                           (begin
                             (enemy-posx-set! (world-enemy world) (car enemyX))
                             (enemy-posy-set! (world-enemy world) (car enemyY))
-                            (set! enemyX (cdr enemyX))
-                            (set! enemyY (cdr enemyY))))
+                            (if (not (null? (cdr enemyX)))
+                                (begin (set! enemyX (cdr enemyX))
+                                       (set! enemyY (cdr enemyY))))))
                       
                       ;;Enemy position list updating
                       (if (not (and (eq? (player-posx (world-player world)) (last enemyX))
@@ -476,7 +486,7 @@ end-of-shader
                                   (set! enemyY '(0))
                                   (set! enemycounter 0))))))
                      ((death-screen)
-                      (addTile 600.0 350.0 1.0 0.0)
+                      (addBackground 1.0 0.0)
                           
                           ;; TODO when we have text
                       ))
