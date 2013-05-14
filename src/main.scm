@@ -113,7 +113,7 @@ end-of-shader
             (ctx (SDL_GL_CreateContext win)))
         (SDL_Log (string-append "SDL screen size: " (object->string screen-width) " x " (object->string screen-height)))
         ;; OpenGL
-        (SDL_Log (string-append "OpenGL Version: " (unsigned-char*->string (glGetString GL_VERSION))))
+        (SDL_Log (string-append "OpenGL Version: " (*->string (glGetString GL_VERSION))))
         (SDL_Log "Using API OpenGL Version: 2.1 - GL Shading Language Version: 1.2")
         ;; Glew: initialize extensions
         (glewInit)
@@ -137,7 +137,7 @@ end-of-shader
                (shaders (list (fusion:create-shader GL_VERTEX_SHADER vertex-shader)
                               (fusion:create-shader GL_FRAGMENT_SHADER fragment-shader)))
                (shader-program (fusion:create-program shaders))
-               (texture-image* (SDL_LoadBMP "assets/128x128.bmp")))
+               (texture-image* (SDL_LoadBMP "assets/128x128-2.bmp")))
           ;; Clean up shaders once the program has been compiled and linked
           (for-each glDeleteShader shaders)
 
@@ -198,7 +198,7 @@ end-of-shader
             (glBindVertexArray 0)
             
             ;; Game loop
-            (let ((event* (alloc-SDL_Event 1)))
+            (let ((event* (alloc-SDL_Event)))
               (call/cc
                (lambda (quit)
                  (let main-loop ((world (make-world 'splash-screen '() '()))
@@ -521,7 +521,6 @@ end-of-shader
                    
                    (SDL_GL_SwapWindow win)
                    (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter))))
-              (free event*)
               (SDL_LogInfo SDL_LOG_CATEGORY_APPLICATION "Bye.")
               (SDL_GL_DeleteContext ctx)
               (SDL_DestroyWindow win)
