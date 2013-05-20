@@ -121,6 +121,10 @@ end-of-shader
         (glViewport 0 0 screen-width screen-height)
         (glScissor 0 0 screen-width screen-height)
 
+        ;;Start sound mixer
+        (unless (= 0 (Mix_OpenAudio 44100 MIX_DEFAULT_FORMAT 2 1024))
+                (fusion:error (string-append "Unable to initialize sound system -- " (Mix_GetError)))) 
+        
         ;; Generate programs, buffers, textures
         (let* ((perspective-matrix (matrix:* (make-translation-matrix -1.0 1.0 0.0)
                                              (matrix:* (make-scaling-matrix (/ 2.0 screen-width) (/ -2.0 screen-height) 1.0)
@@ -137,21 +141,39 @@ end-of-shader
                (shaders (list (fusion:create-shader GL_VERTEX_SHADER vertex-shader)
                               (fusion:create-shader GL_FRAGMENT_SHADER fragment-shader)))
                (shader-program (fusion:create-program shaders))
-               (texture-image* (SDL_LoadBMP "assets/128x128-2.bmp")))
+               
+               (texture-image* (IMG_Load "assets/128x128-2.png"))
+               
+               ;;Background Music
+               (background-music* (or (Mix_LoadMUS "assets/background.ogg")
+                                      (fusion:error (string-append "Unable to load OGG music -- " (Mix_GetError))))) 
+               ;;Sound effects
+               (jump-sound* (or (Mix_LoadWAV "assets/Jump.wav")
+                                 (fusion:error (string-append "Unable to load WAV chunk -- " (Mix_GetError)))))
+               (death-sound* (or (Mix_LoadWAV "assets/Death.wav")
+                                 (fusion:error (string-append "Unable to load WAV chunk -- " (Mix_GetError)))))
+               (burnt-sound* (or (Mix_LoadWAV "assets/Fire.wav")
+                                 (fusion:error (string-append "Unable to load WAV chunk -- " (Mix_GetError)))))
+
+               )
           ;; Clean up shaders once the program has been compiled and linked
           (for-each glDeleteShader shaders)
+
 
           ;; Texture
           (glGenTextures 1 texture-id*)
           (glBindTexture GL_TEXTURE_2D (*->GLuint texture-id*))
-          (glTexImage2D GL_TEXTURE_2D 0 3
+          (glTexImage2D GL_TEXTURE_2D 0 GL_RGBA
                         (SDL_Surface-w texture-image*) (SDL_Surface-h texture-image*)
-                        0 GL_BGR GL_UNSIGNED_BYTE
+                        0 GL_RGBA GL_UNSIGNED_BYTE
                         (SDL_Surface-pixels texture-image*))
           (glTexParameteri GL_TEXTURE_2D GL_TEXTURE_BASE_LEVEL 0)
           (glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAX_LEVEL 0)
           (glBindTexture GL_TEXTURE_2D 0)
           (SDL_FreeSurface texture-image*)
+          (glEnable GL_BLEND)
+          (glBlendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA)
+                   
 
           ;; Uniforms
           (glUseProgram shader-program)
@@ -207,7 +229,8 @@ end-of-shader
                                  (levelcounter 0) 
                                  (enemyX '(0)) 
                                  (enemyY '(0)) 
-                                 (enemycounter 0))
+                                 (enemycounter 0)
+                                 (playerAnim 0))
                    (let event-loop ()
                      (when (= 1 (SDL_PollEvent event*))
                            (let ((event-type (SDL_Event-type event*)))
@@ -222,7 +245,8 @@ end-of-shader
                                        ((= key SDLK_RETURN)
                                         (if (eq? (world-gamestate world) 'splash-screen)
                                             (set! world (make-world 'game-screen (make-player (* tile-width 2) (* tile-width 28) 'idle 'idle) (make-enemy (- 0 tile-width) (- 0 tile-height))))
-                                            (set! world (make-world 'splash-screen '() '()))))
+                                            (if (not (eq? (world-gamestate world) 'game-screen))
+                                                (set! world (make-world 'splash-screen '() '())))))
                                        ((= key SDLK_LEFT)
                                         (if (eq? (world-gamestate world) 'game-screen)
                                             (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) 'left (player-vstate (world-player world))) (world-enemy world)))))
@@ -231,7 +255,10 @@ end-of-shader
                                             (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) 'right (player-vstate (world-player world))) (world-enemy world)))))
                                        ((= key SDLK_UP)
                                         (if (and (eq? (world-gamestate world) 'game-screen) (eq? (player-vstate (world-player world)) 'idle))
-                                            (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) (player-hstate (world-player world)) 'jump) (world-enemy world)))))
+                                            (begin
+                                              (set! world (make-world (world-gamestate world) (make-player (player-posx (world-player world)) (player-posy (world-player world)) (player-hstate (world-player world)) 'jump) (world-enemy world)))
+                                              (pp "Saltando")
+                                              (Mix_PlayChannel 2 jump-sound* 0))))
                                        (else
                                         (SDL_LogVerbose SDL_LOG_CATEGORY_APPLICATION (string-append "Key: " (number->string key)))))))
 
@@ -259,6 +286,11 @@ end-of-shader
                    ;; Limpiamos el buffer.
                    (set! vertex-data-vector '#f32())
 
+                   ;; Empezamos la musica de fondo.
+
+                   (if (= 0 (Mix_PlayingMusic))
+                       (Mix_PlayMusic background-music* -1))
+
                    (case (world-gamestate world)
                      ((splash-screen)
                       ;; Drawing the menu image
@@ -285,7 +317,14 @@ end-of-shader
                                   (loop rest (+ counterX 1) counterY)))))
 
                       ;; Drawing the player.
-                      (addTile (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player world))) 0.0 1.0)
+
+                      (if (eq? playerAnim 0)
+                          (addTile (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 0.0 1.0)
+                          (addTile (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 0.0 2.0))
+                      (if (eq? (player-hstate (world-player world)) 'right)
+                          (set! playerAnim 0))
+                      (if (eq? (player-hstate (world-player world)) 'left)
+                          (set! playerAnim 1))
 
                       ;; Drawing the enemy.
                       (addTile (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 1.0 0.0)
@@ -381,7 +420,8 @@ end-of-shader
                             (set! enemyX '(0))
                             (set! enemyY '(0))
                             (set! enemycounter 0)
-                            (set! levelcounter 0)))
+                            (set! levelcounter 0)
+                            (Mix_PlayChannel 1 death-sound* 0)))
                       
                       
                       
@@ -403,7 +443,8 @@ end-of-shader
                                   (set! enemyX '(0))
                                   (set! enemyY '(0))
                                   (set! enemycounter 0)
-                                  (set! levelcounter 0)))))
+                                  (set! levelcounter 0)
+                                  (Mix_PlayChannel 1 burnt-sound* 0)))))
                       
                       ;;Collision on the right
                       (if (eq? (player-hstate (world-player world)) 'right)
@@ -419,7 +460,8 @@ end-of-shader
                                   (set! enemyX '(0))
                                   (set! enemyY '(0))
                                   (set! enemycounter 0)
-                                  (set! levelcounter 0)))))
+                                  (set! levelcounter 0)
+                                  (Mix_PlayChannel 1 burnt-sound* 0)))))
                       
                       
                       ;;Collision on bottom
@@ -436,7 +478,8 @@ end-of-shader
                                   (set! enemyX '(0))
                                   (set! enemyY '(0))
                                   (set! enemycounter 0)
-                                  (set! levelcounter 0)))))
+                                  (set! levelcounter 0)
+                                  (Mix_PlayChannel 1 burnt-sound* 0)))))
                       
                       ;;Collision on top
                       (if (eq? (player-vstate (world-player world)) 'jump)
@@ -453,7 +496,8 @@ end-of-shader
                                   (set! enemyX '(0))
                                   (set! enemyY '(0))
                                   (set! enemycounter 0)
-                                  (set! levelcounter 0)))))
+                                  (set! levelcounter 0)
+                                  (Mix_PlayChannel 1 fire-sound* 0)))))
                       
                       
                       ;; Level Complete
@@ -520,7 +564,7 @@ end-of-shader
                    ;; End VAO
                    
                    (SDL_GL_SwapWindow win)
-                   (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter))))
+                   (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter playerAnim))))
               (SDL_LogInfo SDL_LOG_CATEGORY_APPLICATION "Bye.")
               (SDL_GL_DeleteContext ctx)
               (SDL_DestroyWindow win)
