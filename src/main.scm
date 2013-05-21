@@ -190,8 +190,8 @@ end-of-shader
           (let ((sampler-id (*->GLuint sampler-id*)))
             (glSamplerParameteri sampler-id GL_TEXTURE_WRAP_S GL_CLAMP_TO_EDGE)
             (glSamplerParameteri sampler-id GL_TEXTURE_WRAP_T GL_CLAMP_TO_EDGE)
-            (glSamplerParameteri sampler-id GL_TEXTURE_MAG_FILTER GL_LINEAR)
-            (glSamplerParameteri sampler-id GL_TEXTURE_MIN_FILTER GL_LINEAR))
+            (glSamplerParameteri sampler-id GL_TEXTURE_MAG_FILTER GL_NEAREST)
+            (glSamplerParameteri sampler-id GL_TEXTURE_MIN_FILTER GL_NEAREST))
           
           ;; Vertex Array Object
           (glGenBuffers 1 position-buffer-object-id*)
@@ -230,7 +230,8 @@ end-of-shader
                                  (enemyX '(0)) 
                                  (enemyY '(0)) 
                                  (enemycounter 0)
-                                 (playerAnim 0))
+                                 (playerAnim 0)
+                                 (enemyAnim 0))
                    (let event-loop ()
                      (when (= 1 (SDL_PollEvent event*))
                            (let ((event-type (SDL_Event-type event*)))
@@ -326,9 +327,12 @@ end-of-shader
                       (if (eq? (player-hstate (world-player world)) 'left)
                           (set! playerAnim 1))
 
-                      ;; Drawing the enemy.
-                      (addTile (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 1.0 0.0)
 
+                      ;; Drawing the enemy
+
+                      (if (eq? enemyAnim 0)
+                          (addTile (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 1.0 2.0)
+                          (addTile (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 1.0 0.0))
 
 
                       ;;Player Movement Calculation
@@ -395,6 +399,13 @@ end-of-shader
                       ;;Enemy position updating
                       (if (> (- time enemycounter) 1500)
                           (begin
+                            ;; Drawing the enemy.
+                            (if (not (and (eq? (player-posx (world-player world)) (last enemyX))
+                                          (eq? (player-posy (world-player world)) (last enemyY))))
+                                
+                                (if (> (car enemyX) (car (cdr enemyX)))
+                                    (set! enemyAnim 0)
+                                    (set! enemyAnim 1)))
                             (enemy-posx-set! (world-enemy world) (car enemyX))
                             (enemy-posy-set! (world-enemy world) (car enemyY))
                             (if (not (null? (cdr enemyX)))
@@ -564,7 +575,7 @@ end-of-shader
                    ;; End VAO
                    
                    (SDL_GL_SwapWindow win)
-                   (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter playerAnim))))
+                   (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter playerAnim enemyAnim))))
               (SDL_LogInfo SDL_LOG_CATEGORY_APPLICATION "Bye.")
               (SDL_GL_DeleteContext ctx)
               (SDL_DestroyWindow win)
