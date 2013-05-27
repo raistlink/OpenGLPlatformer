@@ -18,22 +18,47 @@
 (define-structure world gamestate player enemy)
 
 
-(define addTile (lambda (x y px py)
+(define addCharacter (lambda (x y px py)
                   (set! vertex-data-vector 
                         (f32vector-append vertex-data-vector 
-                                          (list->f32vector (list x y (* 0.25 px) (* 0.25 py)
-                                                                 x (+ y tile-height) (* 0.25 px) (* 0.25 (+ py 1))
-                                                                 (+ x tile-width) (+ y tile-height) (* 0.25 (+ px 1)) (* 0.25 (+ py 1))
-                                                                 (+ x tile-width) y (* 0.25 (+ px 1)) (* 0.25 py)))))))
+                                          (list->f32vector (list (- x tile-width) (- y tile-height) (* 0.1245 px) (* 0.1245 py)
+                                                                 (- x tile-width) (+ y (* 2 tile-height)) (* 0.1245 px) (* 0.1245 (+ py 1))
+                                                                 (+ x (* 2 tile-width)) (+ y (* 2 tile-height)) (* 0.1245 (+ px 1)) (* 0.1245 (+ py 1))
+                                                                 (+ x (* 2 tile-width)) (- y tile-height) (* 0.1245 (+ px 1)) (* 0.1245 py)))))))
+
+(define addEnemy (lambda (x y px py)
+                  (set! vertex-data-vector 
+                        (f32vector-append vertex-data-vector 
+                                          (list->f32vector (list (- x (* 2 tile-width)) (- y (* 2 tile-height)) (* 0.1245 px) (* 0.1245 py)
+                                                                 (- x (* 2 tile-width)) (+ y (* 2 tile-height)) (* 0.1245 px) (* 0.1245 (+ py 1))
+                                                                 (+ x (* 2 tile-width)) (+ y (* 2 tile-height)) (* 0.1245 (+ px 1)) (* 0.1245 (+ py 1))
+                                                                 (+ x (* 2 tile-width)) (- y (* 2 tile-height)) (* 0.1245 (+ px 1)) (* 0.1245 py)))))))
 
 
 (define addBackground (lambda (px py)
                   (set! vertex-data-vector 
                         (f32vector-append vertex-data-vector 
-                                          (list->f32vector (list 0.0 0.0 (* 0.25 px) (* 0.25 py)
-                                                                 0.0 (+ 0.0 (- screen-height 5)) (* 0.25 px) (* 0.25 (+ py 1))
-                                                                 (+ 0.0 (- screen-width 5)) (+ 0.0 (- screen-height 5)) (* 0.25 (+ px 1)) (* 0.25 (+ py 1))
-                                                                 (+ 0.0 (- screen-width 5)) 0.0 (* 0.25 (+ px 1)) (* 0.25 py)))))))
+                                          (list->f32vector (list 0.0 0.0 (* 0.25 px) (+ 0.5 (* 0.17675 py))
+                                                                 0.0 (+ 0.0 (- screen-height 5)) (* 0.25 px) (+ 0.5 (* 0.17675 (+ py 1)))
+                                                                 (+ 0.0 (- screen-width 5)) (+ 0.0 (- screen-height 5)) (* 0.25 (+ px 1)) (+ 0.5 (* 0.17675 (+ py 1)))
+                                                                 (+ 0.0 (- screen-width 5)) 0.0 (* 0.25 (+ px 1)) (+ 0.5 (* 0.17675 py))))))))
+
+(define addDeathScreen (lambda (px py)
+                  (set! vertex-data-vector 
+                        (f32vector-append vertex-data-vector 
+                                          (list->f32vector (list 0.0 0.0 (+ 0.5 (* 0.25 px)) (+ 0.8535 (* 0.1469 py))
+                                                                 0.0 (+ 0.0 (- screen-height 5)) (+ 0.5 (* 0.25 px)) (+ 0.8535 (* 0.1469 (+ py 1)))
+                                                                 (+ 0.0 (- screen-width 5)) (+ 0.0 (- screen-height 5)) (+ 0.5 (* 0.25 (+ px 1))) (+ 0.8535 (* 0.1469 (+ py 1)))
+                                                                 (+ 0.0 (- screen-width 5)) 0.0 (+ 0.5 (* 0.25 (+ px 1))) (+ 0.8535 (* 0.1469 py))))))))
+
+(define addPlatform (lambda (x y px py)
+                  (set! vertex-data-vector 
+                        (f32vector-append vertex-data-vector 
+                                          (list->f32vector (list x y (* 0.0595 px) (+ 0.8635 (* 0.05 py))
+                                                                 x (+ y (* 1.3  tile-height)) (* 0.0595 px) (+ 0.8635 (* 0.05 (+ py 1)))
+                                                                 (+ x (* 1.3  tile-width)) (+ y (* 1.3 tile-height)) (* 0.0595 (+ px 1)) (+ 0.8635 (* 0.05 (+ py 1)))
+                                                                 (+ x (* 1.3 tile-width)) y (* 0.0595 (+ px 1)) (+ 0.8635 (* 0.05 py))))))))
+
 
 ;; Functions to get from one level to another, and spawn position data
 (define levellist (cons level1 (cons level2 (cons level3 '()))))
@@ -142,7 +167,8 @@ end-of-shader
                               (fusion:create-shader GL_FRAGMENT_SHADER fragment-shader)))
                (shader-program (fusion:create-program shaders))
                
-               (texture-image* (IMG_Load "assets/128x128-2.png"))
+               ;;(texture-image* (IMG_Load "assets/128x128-2.png"))
+               (texture-image* (IMG_Load "assets/PLANTILLA.png"))
                
                ;;Background Music
                (background-music* (or (Mix_LoadMUS "assets/background.ogg")
@@ -231,7 +257,12 @@ end-of-shader
                                  (enemyY '(0)) 
                                  (enemycounter 0)
                                  (playerAnim 0)
-                                 (enemyAnim 0))
+                                 (enemyAnim 0)
+                                 (mouseAnimationTime 0)
+                                 (mouseAnimationState 0)
+                                 (catAnimationTime 0)
+                                 (catAnimationState 0)
+                                 (enemyJump 0))
                    (let event-loop ()
                      (when (= 1 (SDL_PollEvent event*))
                            (let ((event-type (SDL_Event-type event*)))
@@ -245,7 +276,7 @@ end-of-shader
                                         (quit))
                                        ((= key SDLK_RETURN)
                                         (if (eq? (world-gamestate world) 'splash-screen)
-                                            (set! world (make-world 'game-screen (make-player (* tile-width 2) (* tile-width 28) 'idle 'idle) (make-enemy (- 0 tile-width) (- 0 tile-height))))
+                                            (set! world (make-world 'game-screen (make-player (* tile-width 2) (* tile-width 28) 'idle 'idle) (make-enemy (+ 0 (* 2 tile-width)) (- 0 (* 2 tile-height)))))
                                             (if (not (eq? (world-gamestate world) 'game-screen))
                                                 (set! world (make-world 'splash-screen '() '())))))
                                        ((= key SDLK_LEFT)
@@ -296,32 +327,67 @@ end-of-shader
                      ((splash-screen)
                       ;; Drawing the menu image
                       
-                      (addBackground 2.0 0.0))
+                      (addBackground 2.0 1.0))
                      
 
                      ((game-screen)
                       
                       ;; Drawing the background
-                      (addBackground 3.0 0.0)
+                      (addBackground 1.0 0.0)
+
+                      ;; Updating animation time
+
+                      (if (> (- time mouseAnimationTime) 0)
+                          (set! mouseAnimationState 0))
+                      (if (> (- time mouseAnimationTime) 150)
+                          (set! mouseAnimationState 1))
+                      (if (> (- time mouseAnimationTime) 300)
+                          (set! mouseAnimationTime time))
                       
+                      
+                      (if (> (- time catAnimationTime) 0)
+                          (set! catAnimationState 0))
+                      (if (> (- time catAnimationTime) 150)
+                          (set! catAnimationState 1))
+                      (if (> (- time catAnimationTime) 300)
+                          (set! catAnimationState 2))
+                      (if (> (- time catAnimationTime) 450)
+                          (set! catAnimationTime time))
+                     
                       ;; Drawing the tiles.
                       (let loop ((rest (getlevel levellist levelcounter)) (counterX 0) (counterY 0))
                         (if (and (eq? counterX 50) (eq? counterY 29))
-                            (addTile (* counterX tile-width) (* counterY tile-height) 1.0 1.0)
+                            (addPlatform (* counterX tile-width) (* counterY tile-height) 6.0 0.0)
                             (begin
                               (if (eq? (vector-ref (vector-ref rest counterY) counterX) 1)
-                                  (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-height)) 1.0 1.0))
+                                  (addPlatform (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-height)) 6.0 0.0))
                               (if (eq? (vector-ref (vector-ref rest counterY) counterX) 4)
-                                  (addTile (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-height)) 0.0 0.0))
+                                  (addPlatform (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-height)) 4.0 1.0))
                               (if (eq? counterX 50)
                                   (loop rest (- counterX 50) (+ counterY 1))
                                   (loop rest (+ counterX 1) counterY)))))
 
                       ;; Drawing the player.
 
-                      (if (eq? playerAnim 0)
-                          (addTile (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 0.0 1.0)
-                          (addTile (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 0.0 2.0))
+
+                      (if (eq? (player-vstate (world-player world)) 'jump)
+                          (if (eq? playerAnim 0)
+                              (addCharacter (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 4.0 0.0)
+                              (addCharacter (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 4.0 1.0))
+                          (if (eq? (player-hstate (world-player world)) 'idle)
+                              (if (eq? playerAnim 0)
+                                  (addCharacter (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 0.0 0.0)
+                                  (addCharacter (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 0.0 1.0)) 
+                              (begin
+                                (if (eq? mouseAnimationState 0) 
+                                    (if (eq? playerAnim 0)
+                                        (addCharacter (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 1.0 0.0)
+                                        (addCharacter (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 1.0 1.0)))
+                                (if (eq? mouseAnimationState 1) 
+                                    (if (eq? playerAnim 0)
+                                        (addCharacter (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 2.0 0.0)
+                                        (addCharacter (exact->inexact (player-posx (world-player world))) (exact->inexact (player-posy (world-player  world))) 2.0 1.0))))))
+                      
                       (if (eq? (player-hstate (world-player world)) 'right)
                           (set! playerAnim 0))
                       (if (eq? (player-hstate (world-player world)) 'left)
@@ -329,10 +395,26 @@ end-of-shader
 
 
                       ;; Drawing the enemy
+                      
+                      (if (eq? enemyJump 1)
+                          (if (eq? enemyAnim 1)
+                              (addEnemy (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 5.0 2.0)
+                              (addEnemy (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 5.0 3.0))
+                          (begin
+                            (if (eq? catAnimationState 0)
+                                (if (eq? enemyAnim 0)
+                                    (addEnemy (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 1.0 3.0)
+                                    (addEnemy (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 1.0 2.0)))
+                            (if (eq? catAnimationState 1)
+                                (if (eq? enemyAnim 0)
+                                    (addEnemy (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 2.0 3.0)
+                                    (addEnemy (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 2.0 2.0)))
+                            (if (eq? catAnimationState 2)
+                                (if (eq? enemyAnim 0)
+                                    (addEnemy (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 3.0 3.0) 
+                                    (addEnemy (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 3.0 2.0)))))
 
-                      (if (eq? enemyAnim 0)
-                          (addTile (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 1.0 2.0)
-                          (addTile (exact->inexact (enemy-posx (world-enemy world))) (exact->inexact (enemy-posy (world-enemy  world))) 1.0 0.0))
+ 
 
 
                       ;;Player Movement Calculation
@@ -403,9 +485,12 @@ end-of-shader
                             (if (not (and (eq? (player-posx (world-player world)) (last enemyX))
                                           (eq? (player-posy (world-player world)) (last enemyY))))
                                 
-                                (if (> (car enemyX) (car (cdr enemyX)))
-                                    (set! enemyAnim 0)
-                                    (set! enemyAnim 1)))
+                                (begin (if (> (car enemyX) (car (cdr enemyX)))
+                                           (set! enemyAnim 0)
+                                           (set! enemyAnim 1))
+                                       (if (> (car enemyY) (car (cdr enemyY)))
+                                           (set! enemyJump 1)
+                                           (set! enemyJump 0))))
                             (enemy-posx-set! (world-enemy world) (car enemyX))
                             (enemy-posy-set! (world-enemy world) (car enemyY))
                             (if (not (null? (cdr enemyX)))
@@ -549,7 +634,7 @@ end-of-shader
                      ((death-screen)
                       
                       ;;Drawing the death background
-                      (addBackground 2.0 1.0)
+                      (addDeathScreen 1.0 0.0)
                       ))
 
                    ;; -- Draw -
@@ -575,7 +660,7 @@ end-of-shader
                    ;; End VAO
                    
                    (SDL_GL_SwapWindow win)
-                   (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter playerAnim enemyAnim))))
+                   (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter playerAnim enemyAnim mouseAnimationTime mouseAnimationState catAnimationTime catAnimationState enemyJump ))))
               (SDL_LogInfo SDL_LOG_CATEGORY_APPLICATION "Bye.")
               (SDL_GL_DeleteContext ctx)
               (SDL_DestroyWindow win)
