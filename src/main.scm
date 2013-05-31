@@ -66,6 +66,7 @@
 (define level- (cons 3 (cons 28 (cons 3 '()))))
 
 
+
 ;; Funcion to get the level we are in.
 (define (getlevel llist lcounter)
   (let loop ((rest llist) (counter 0))
@@ -262,7 +263,8 @@ end-of-shader
                                  (mouseAnimationState 0)
                                  (catAnimationTime 0)
                                  (catAnimationState 0)
-                                 (enemyJump 0))
+                                 (enemyJump 0)
+                                 (deathType 0))
                    (let event-loop ()
                      (when (= 1 (SDL_PollEvent event*))
                            (let ((event-type (SDL_Event-type event*)))
@@ -333,7 +335,9 @@ end-of-shader
                      ((game-screen)
                       
                       ;; Drawing the background
-                      (addBackground 1.0 0.0)
+                      (if (> levelcounter 3)
+                          (addBackground (exact->inexact levelcounter) 1.0)
+                          (addBackground (exact->inexact levelcounter) 0.0))
 
                       ;; Updating animation time
 
@@ -517,13 +521,14 @@ end-of-shader
                             (set! enemyY '(0))
                             (set! enemycounter 0)
                             (set! levelcounter 0)
+                            (set! deathType 1)
                             (Mix_PlayChannel 1 death-sound* 0)))
                       
                       
                       
                       ;;Game calculations
                       
-                      ;; Obstacle collision calculation
+                      ;;Obstacle collision calculation
                       
                       ;;Collision on the left
                       (if (eq? (player-hstate (world-player world)) 'left)
@@ -540,6 +545,7 @@ end-of-shader
                                   (set! enemyY '(0))
                                   (set! enemycounter 0)
                                   (set! levelcounter 0)
+                                  (set! deathType 0)
                                   (Mix_PlayChannel 1 burnt-sound* 0)))))
                       
                       ;;Collision on the right
@@ -557,6 +563,7 @@ end-of-shader
                                   (set! enemyY '(0))
                                   (set! enemycounter 0)
                                   (set! levelcounter 0)
+                                  (set! deathType 0)
                                   (Mix_PlayChannel 1 burnt-sound* 0)))))
                       
                       
@@ -575,6 +582,7 @@ end-of-shader
                                   (set! enemyY '(0))
                                   (set! enemycounter 0)
                                   (set! levelcounter 0)
+                                  (set! deathType 0)
                                   (Mix_PlayChannel 1 burnt-sound* 0)))))
                       
                       ;;Collision on top
@@ -593,6 +601,7 @@ end-of-shader
                                   (set! enemyY '(0))
                                   (set! enemycounter 0)
                                   (set! levelcounter 0)
+                                  (set! deathType 0)
                                   (Mix_PlayChannel 1 fire-sound* 0)))))
                       
                       
@@ -634,7 +643,9 @@ end-of-shader
                      ((death-screen)
                       
                       ;;Drawing the death background
-                      (addDeathScreen 1.0 0.0)
+                      (if (eq? deathType 1)
+                          (addDeathScreen 1.0 0.0)
+                          (addDeathScreen 0.0 0.0))
                       ))
 
                    ;; -- Draw -
@@ -660,7 +671,7 @@ end-of-shader
                    ;; End VAO
                    
                    (SDL_GL_SwapWindow win)
-                   (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter playerAnim enemyAnim mouseAnimationTime mouseAnimationState catAnimationTime catAnimationState enemyJump ))))
+                   (main-loop world (SDL_GetTicks) jumpcounter levelcounter enemyX enemyY enemycounter playerAnim enemyAnim mouseAnimationTime mouseAnimationState catAnimationTime catAnimationState enemyJump deathType))))
               (SDL_LogInfo SDL_LOG_CATEGORY_APPLICATION "Bye.")
               (SDL_GL_DeleteContext ctx)
               (SDL_DestroyWindow win)
