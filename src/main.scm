@@ -61,9 +61,9 @@
 
 
 ;; Functions to get from one level to another, and spawn position data
-(define levellist (cons level1 (cons level2 (cons level3 '()))))
-(define level+ (cons 28 (cons 3 (cons 8 '()))))
-(define level- (cons 3 (cons 28 (cons 3 '()))))
+(define levellist (cons level1 (cons level2 (cons level3 (cons level4 (cons level5 (cons level6 '())))))))
+(define level+ (cons 28 (cons 3 (cons 8 (cons 21 (cons 19 (cons 19 '())))))))
+(define level- (cons 3 (cons 8 (cons 20 (cons 18 (cons 18 (cons 20 '())))))))
 
 
 
@@ -182,6 +182,8 @@ end-of-shader
                (burnt-sound* (or (Mix_LoadWAV "assets/Fire.wav")
                                  (fusion:error (string-append "Unable to load WAV chunk -- " (Mix_GetError)))))
 
+               (win-sound* (or (Mix_LoadWAV "assets/win.wav")
+                                 (fusion:error (string-append "Unable to load WAV chunk -- " (Mix_GetError)))))
                )
           ;; Clean up shaders once the program has been compiled and linked
           (for-each glDeleteShader shaders)
@@ -336,7 +338,7 @@ end-of-shader
                       
                       ;; Drawing the background
                       (if (> levelcounter 3)
-                          (addBackground (exact->inexact levelcounter) 1.0)
+                          (addBackground (exact->inexact (- levelcounter 4)) 1.0)
                           (addBackground (exact->inexact levelcounter) 0.0))
 
                       ;; Updating animation time
@@ -367,6 +369,8 @@ end-of-shader
                                   (addPlatform (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-height)) 6.0 0.0))
                               (if (eq? (vector-ref (vector-ref rest counterY) counterX) 4)
                                   (addPlatform (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-height)) 4.0 1.0))
+                              (if (eq? (vector-ref (vector-ref rest counterY) counterX) 5)
+                                  (addCharacter (exact->inexact (* counterX tile-width)) (exact->inexact (* counterY tile-height)) 6.0 1.0))
                               (if (eq? counterX 50)
                                   (loop rest (- counterX 50) (+ counterY 1))
                                   (loop rest (+ counterX 1) counterY)))))
@@ -602,7 +606,84 @@ end-of-shader
                                   (set! enemycounter 0)
                                   (set! levelcounter 0)
                                   (set! deathType 0)
-                                  (Mix_PlayChannel 1 fire-sound* 0)))))
+                                  (Mix_PlayChannel 1 burnt-sound* 0)))))
+
+                      ;;Winning collision calculation
+                      
+                      ;;Collision on the left
+                      (if (eq? (player-hstate (world-player world)) 'left)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height)))) 
+                                                     (inexact->exact (floor (/ (- (player-posx (world-player world)) (/ tile-width 25)) tile-width)))) 5)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (+ (- tile-height (/ tile-height 16.666)) (player-posy (world-player world))) tile-height)))) 
+                                                     (inexact->exact (floor (/ (- (player-posx (world-player world)) (/ tile-width 25)) tile-width)))) 5) )
+                                (begin
+                                  (world-gamestate-set! world 'win-screen)
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0)
+                                  (set! levelcounter 0)
+                                  (set! deathType 0)
+                                  (Mix_PlayChannel 1 win-sound* 0)))))
+                      
+                      ;;Collision on the right
+                      (if (eq? (player-hstate (world-player world)) 'right)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height)))) 
+                                                     (inexact->exact (floor  (/  (+ (+ tile-width (/ tile-width 10)) (player-posx (world-player world))) tile-width)))) 5)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (+ (- tile-height (/ tile-height 16.666)) (player-posy (world-player world))) tile-height)))) 
+                                                     (inexact->exact (floor  (/  (+ (+ tile-width (/ tile-width 10)) (player-posx (world-player world))) tile-width)))) 5))
+                                (begin
+                                  (world-gamestate-set! world 'win-screen)
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0)
+                                  (set! levelcounter 0)
+                                  (set! deathType 0)
+                                  (Mix_PlayChannel 1 win-sound* 0)))))
+                      
+                      
+                      ;;Collision on bottom
+                      (if (or (eq? (player-vstate (world-player world)) 'idle) (eq? (player-vstate (world-player world)) 'falling))
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (+ (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))) 1))
+                                                     (inexact->exact (floor (/ (player-posx (world-player world)) tile-width)))) 5)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (+ (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))) 1))
+                                                     (inexact->exact (floor (/ (+ tile-width (player-posx (world-player world))) tile-width)))) 5))
+                                (begin
+                                  (world-gamestate-set! world 'win-screen)
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0)
+                                  (set! levelcounter 0)
+                                  (set! deathType 0)
+                                  (Mix_PlayChannel 1 win-sound* 0)))))
+                      
+                      ;;Collision on top
+                      (if (eq? (player-vstate (world-player world)) 'jump)
+                          (begin
+                            (if (or (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))))
+                                                     (inexact->exact (floor (/ ( player-posx (world-player world)) tile-width)))) 5)
+                                    (eq? (vector-ref (vector-ref (getlevel levellist levelcounter) (inexact->exact (floor (/ (player-posy (world-player world)) tile-height))))
+                                                     (inexact->exact (floor (/ (+ tile-width (player-posx (world-player world))) tile-width)))) 5) 
+                                    )
+                                (begin
+                                  (world-gamestate-set! world 'win-screen)
+                                  (enemy-posx-set! (world-enemy world) (- 0 tile-width))
+                                  (enemy-posy-set! (world-enemy world) (- 0 tile-width))
+                                  (set! enemyX '(0))
+                                  (set! enemyY '(0))
+                                  (set! enemycounter 0)
+                                  (set! levelcounter 0)
+                                  (set! deathType 0)
+                                  (Mix_PlayChannel 1 win-sound* 0)))))
+
                       
                       
                       ;; Level Complete
@@ -645,8 +726,12 @@ end-of-shader
                       ;;Drawing the death background
                       (if (eq? deathType 1)
                           (addDeathScreen 1.0 0.0)
-                          (addDeathScreen 0.0 0.0))
-                      ))
+                          (addDeathScreen 0.0 0.0)))
+                     ((win-screen)
+                      ;;Drawing the win background
+                      (addBackground 3.0 1.0)
+                      )
+                     )
 
                    ;; -- Draw -
                    (glClearColor 0.0 0.0 0.0 0.0)
